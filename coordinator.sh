@@ -12,14 +12,14 @@ fi
 tmp_dir=$(mktemp -d -t reqrun-XXXXXXXXXX)
 pushd $tmp_dir
 
-. $SCRIPTPATH/setup.sh
+. $SCRIPTPATH/../setup.sh
 
 # Step 2) Copy in executor script, which listens for req_run
 cp $SCRIPTPATH/executor.sh .
 chmod +x executor.sh
 
 # Step 3) Copy in user bootstrap which is run inside container
-cp $SCRIPTPATH/run_bootstrap.sh .
+cp $SCRIPTPATH/../run_bootstrap.sh .
 chmod +x run_bootstrap.sh
 
 # Step 4)
