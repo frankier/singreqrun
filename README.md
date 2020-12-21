@@ -53,4 +53,4 @@ TODO
 
 ## As used by...
 
- * [singslurm](https://github.com/frankier/singslurm)
+ * [singslurm2](https://github.com/frankier/singslurm2)
