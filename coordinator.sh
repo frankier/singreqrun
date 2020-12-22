@@ -19,7 +19,7 @@ cp $SCRIPTPATH/executor.sh .
 chmod +x executor.sh
 
 # Step 3) Copy in user bootstrap which is run inside container
-TMP_DIR="$tmp_dir" envsubst < $SCRIPTPATH/../run_bootstrap.sh > run_bootstrap.sh
+TMP_DIR="$tmp_dir" ARGS="$@" envsubst < $SCRIPTPATH/../run_bootstrap.sh > run_bootstrap.sh
 chmod +x run_bootstrap.sh
 
 # Step 4)
