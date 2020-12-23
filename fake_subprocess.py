@@ -1,14 +1,16 @@
 class AbsoluteImport:
     def __enter__(self):
         import sys
-        from os.path import samefile
+        from os.path import samefile, dirname, realpath
+        cur_dir = dirname(realpath(__file__))
         self.saved_sys_path = sys.path[:]
         to_rm_idxs = []
         for idx, path in enumerate(sys.path):
             if path == "":
-                path = "."
+                to_rm_idxs.append(idx)
+                continue
             try:
-                if samefile(path, "."):
+                if samefile(path, cur_dir):
                     to_rm_idxs.append(idx)
             except FileNotFoundError:
                 pass
