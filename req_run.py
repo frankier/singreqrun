@@ -4,10 +4,12 @@ SLEEP_TIME = 0.2
 def check_output(args):
     import os
     import time
-    import uuid
+    import base64
+    import random
     from subprocess import CalledProcessError
-    iden = uuid.uuid4().hex
-    cmd_path = "/var/run/req_run/{iden}.cmd"
+    rand_bytes = random.getrandbits(128).to_bytes(16, 'little')
+    iden = base64.standard_b64encode(rand_bytes).decode('utf-8')
+    cmd_path = f"/var/run/req_run/{iden}.cmd"
     with open(os.open(cmd_path, os.O_CREAT | os.O_WRONLY, 0o755), "w") as cmd:
         cmd.write("#!/bin/bash\n")
         cmd.write(" ".join(args))
