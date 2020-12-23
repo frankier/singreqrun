@@ -13,6 +13,7 @@ class AbsoluteImport:
 
 
 with AbsoluteImport():
+    import importlib
     subprocess_spec = importlib.util.find_spec("subprocess")
     subprocess = importlib.util.module_from_spec(subprocess_spec)
     subprocess_spec.loader.exec_module(subprocess)
