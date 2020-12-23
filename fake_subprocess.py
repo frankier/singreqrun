@@ -1,8 +1,8 @@
 class AbsoluteImport:
     def __enter__(self):
         import sys
-        from os.path import samefile, dirname, realpath
-        cur_dir = dirname(realpath(__file__))
+        from os.path import samefile, dirname
+        cur_dir = dirname(__file__)
         self.saved_sys_path = sys.path[:]
         to_rm_idxs = []
         for idx, path in enumerate(sys.path):
