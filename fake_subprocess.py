@@ -13,10 +13,15 @@ class AbsoluteImport:
 
 
 with AbsoluteImport():
-    from subprocess import *
+    subprocess_spec = importlib.util.find_spec("subprocess")
+    subprocess = importlib.util.module_from_spec(subprocess_spec)
+    subprocess_spec.loader.exec_module(subprocess)
+    cur_mod = globals()
+    for k, v in vars(subprocess):
+        if k == "check_output":
+            continue
+        cur_mod[k] = v
 
 
-def check_output(args):
-    from req_run import check_output
-    with AbsoluteImport():
-        return check_output(args)
+
+from req_run import check_output
