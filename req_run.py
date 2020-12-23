@@ -6,13 +6,14 @@ def check_output(args):
     import time
     import base64
     import random
+    import shlex
     from subprocess import CalledProcessError
     rand_bytes = random.getrandbits(128).to_bytes(16, 'little')
     iden = base64.urlsafe_b64encode(rand_bytes).decode('utf-8')
     cmd_path = f"/var/run/req_run/{iden}.cmd"
     with open(os.open(cmd_path, os.O_CREAT | os.O_WRONLY, 0o755), "w") as cmd:
         cmd.write("#!/bin/bash\n")
-        cmd.write(" ".join(args))
+        cmd.write(" ".join(shlex.quote(arg) for arg in args))
     with open("/var/run/req_run/reqs", "a") as req_run:
         req_run.write(iden + "\n")
     while not os.path.exists(f"/var/run/req_run/{iden}.code"):
