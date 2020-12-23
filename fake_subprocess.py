@@ -8,6 +8,7 @@ class AbsoluteImport:
         self.saved_subprocess = None
         if "subprocess" in sys.modules:
             self.saved_subprocess = sys.modules["subprocess"]
+            del sys.modules["subprocess"]
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         import sys
