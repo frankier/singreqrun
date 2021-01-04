@@ -1,3 +1,6 @@
+import time
+
+
 SLEEP_TIMES = [0.01, 0.01, 0.03, 0.05, 0.1, 0.2]
 
 
@@ -16,7 +19,6 @@ class Sleeper:
 
 def check_output(args):
     import os
-    import time
     import base64
     import random
     import shlex
