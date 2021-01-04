@@ -1,4 +1,17 @@
-SLEEP_TIME = 0.2
+SLEEP_TIMES = [0.01, 0.01, 0.03, 0.05, 0.1, 0.2]
+
+
+class Sleeper:
+    def __init__(self):
+        self.idx = 0
+
+    def sleep(self):
+        if self.idx >= len(SLEEP_TIMES):
+            sleep_time = SLEEP_TIMES[-1]
+        else:
+            sleep_time = SLEEP_TIMES[self.idx]
+            self.idx += 1
+        time.sleep(sleep_time)
 
 
 def check_output(args):
@@ -16,15 +29,17 @@ def check_output(args):
         cmd.write(" ".join(shlex.quote(arg) for arg in args))
     with open("/var/run/req_run/reqs", "a") as req_run:
         req_run.write(iden + "\n")
+    sleeper = Sleeper()
     while not os.path.exists(f"/var/run/req_run/{iden}.code"):
-        time.sleep(SLEEP_TIME)
+        sleeper.sleep()
     exit_code_str = ""
+    sleeper = Sleeper()
     while 1:
         with open(f"/var/run/req_run/{iden}.code") as code_f:
             exit_code_str = code_f.read().strip()
         if exit_code_str:
             break
-        time.sleep(SLEEP_TIME)
+        sleeper.sleep()
     exit_code = int(exit_code_str)
     with open(f"/var/run/req_run/{iden}.stdout", "rb") as stdout_f:
         stdout = stdout_f.read()
