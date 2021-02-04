@@ -1,3 +1,6 @@
+import importlib.util
+
+
 class AbsoluteImport:
     def __enter__(self):
         import sys
@@ -29,7 +32,6 @@ class AbsoluteImport:
             sys.modules["subprocess"] = self.saved_subprocess
 
 
-import importlib
 with AbsoluteImport():
     subprocess_spec = importlib.util.find_spec("subprocess")
 subprocess = importlib.util.module_from_spec(subprocess_spec)
