@@ -36,6 +36,10 @@ trap "kill 0" EXIT
 
 tail -f $tmp_dir/req_run/reqs 2>/dev/null | $tmp_dir/executor.sh $tmp_dir &
 
+if [[ -n "$PRE_SCRIPT" ]]; then
+  eval "$PRE_SCRIPT"
+fi
+
 singularity exec \
     $SING_EXTRA_ARGS \
     --bind $SIF_PATH \
