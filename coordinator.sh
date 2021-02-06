@@ -34,11 +34,11 @@ touch $tmp_dir/req_run/reqs
 trap "exit" INT TERM
 trap "kill 0" EXIT
 
-if [[ -n "$PRE_SCRIPT" ]]; then
-  eval "$PRE_SCRIPT"
-fi
-
 tail -f $tmp_dir/req_run/reqs 2>/dev/null | $tmp_dir/executor.sh $tmp_dir &
+
+if [[ -n "$PRE_COORDINATOR_SCRIPT" ]]; then
+  eval "$PRE_COORDINATOR_SCRIPT"
+fi
 
 singularity exec \
     $SING_EXTRA_ARGS \
