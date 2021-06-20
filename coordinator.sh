@@ -6,7 +6,8 @@ if [[ -n "$TRACE" ]]; then
   set -o xtrace
 fi
 
-[ -f $SIF_PATH ] || echo "Point $$SIF_PATH at Singularity .sif file."
+[ -z "$SIF_PATH" ] && echo "Point \$SIF_PATH at Singularity .sif file." && exit 1;
+[ -f $SIF_PATH ] || (echo "Point \$SIF_PATH at Singularity .sif file." && exit 1);
 
 # Step 1) Setup tmp dir with shared files
 tmp_dir=$(mktemp -d -t reqrun-XXXXXXXXXX)
