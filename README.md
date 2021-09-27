@@ -49,7 +49,26 @@ A full summary of the files involved are given in the following table:
 
 ## Integrating into your application
 
-TODO
+If you have a situation where you would like a Singularity container to be able
+to execute commands on the host, the workflow is like so:
+
+ 1. Create a new git repository.
+ 2. Add this as a submodule.
+ 3. Create a symlink `ln -s singreqrun/coordinator.sh run.sh`. This is now your
+    entrypoint.
+ 4. Add scripts `setup.sh` and `run_bootstrap.sh` which run outside and inside
+    the container respectively.
+
+In `setup.sh` you need to arrange it so that whatever module is trying to run
+processes starts them using the `singreqrun` protocol. Currently this is best
+done by patching whichever Python module you are targeting to import
+fake_subprocess instead of subprocess. In case you want to target something
+other than a Python module, you will need to write another client for the
+protocol. `run_bootstrap.sh` is passed all arguments passed to `run.sh` as
+`$ARGS`. See [singslurm2](https://github.com/frankier/singslurm2) for
+a complete example. I hope you like bash scripting(!)
+
+TODO: A bit more detail here.
 
 ## As used by...
 
