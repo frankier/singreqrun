@@ -13,7 +13,7 @@ fi
 tmp_dir=$(mktemp -d -t reqrun-XXXXXXXXXX)
 pushd $tmp_dir
 
-. $SCRIPTPATH/../setup.sh
+. $SCRIPTPATH/setup.sh
 
 # Step 2) Copy in executor script, which listens for req_run
 cp $SCRIPTPATH/executor.sh .
@@ -23,7 +23,7 @@ chmod +x executor.sh
 TMP_DIR="$tmp_dir" \
 ARGS="$@" \
 envsubst \
-< $SCRIPTPATH/../run_bootstrap.sh \
+< $SCRIPTPATH/run_bootstrap.sh \
 > run_bootstrap.sh
 
 chmod +x run_bootstrap.sh
