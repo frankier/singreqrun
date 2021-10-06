@@ -34,8 +34,6 @@ base64_encode(char *dest, int size, unsigned char *src, int slen)
 		dest[j++] = encoder[triple & 0x3F];
 	}
 
-	printf("slen %i; j %i\n", slen, j);
-
 	// Pad zeroes at the end
 	switch (slen % 3)
 	{
