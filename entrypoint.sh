@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+DEFAULT_HOST_PROGS="sacct sacctmgr salloc sattach sbatch sbcast scancel scontrol \
+scrontab sdiag sh5util sinfo sprio squeue sreport srun sshare sstat \
+strigger sview singularity"
+
 SCRIPTPATH="$( cd "$(dirname "$(readlink -f "$0")")" >/dev/null 2>&1 ; pwd -P )"
 
 if [[ -n "$TRACE" ]]; then
@@ -15,8 +19,21 @@ pushd $tmp_dir
 
 . $SCRIPTPATH/setup.sh
 
+mkdir bin
+cd bin
+
+if [ -z ${HOST_PROGS+x} ]; then
+  HOST_PROGS="$DEFAULT_HOST_PROGS"
+fi
+
+for prog in $HOST_PROGS; do
+  ln -s $SCRIPTPATH/client.com $prog
+done
+
+cd ..
+
 # Step 2) Copy in executor script, which listens for req_run
-cp $SCRIPTPATH/executor.sh .
+cp $SCRIPTPATH/executor.sh $SCRIPTPATH/run_initial_bootstrap.sh .
 chmod +x executor.sh
 
 # Step 3) Copy in user bootstrap which is run inside container
@@ -51,4 +68,5 @@ singularity exec \
     --bind $SIF_PATH \
     --bind $tmp_dir \
     --bind $tmp_dir/req_run/:/var/run/req_run \
-    $SIF_PATH $tmp_dir/run_bootstrap.sh
+    --bind $tmp_dir/bin/:/bin \
+    $SIF_PATH $tmp_dir/run_initial_bootstrap.sh

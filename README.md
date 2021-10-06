@@ -61,7 +61,7 @@ to execute commands on the host, the workflow is like so:
  3. Add scripts `setup.sh` and `run_bootstrap.sh` which run outside and inside
     of the container respectively.
  4. Create a Makefile which bundles everything including your own scripts,
-    `singreqrun/entrypoint.sh` and `singreqrun/executor.sh`.
+    `singreqrun/entrypoint.sh`, `singreqrun/run_initial_bootstrap.sh` and `singreqrun/executor.sh`.
 
 In `setup.sh` you need to arrange it so that whatever module is trying to run
 processes starts them using the `singreqrun` protocol. Currently this is best
