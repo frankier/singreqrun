@@ -2,14 +2,18 @@
 
 This repository contains code to help code running within Singularity container
 execute commands on the host. It contains two parts, a Bash *server component*
-which runs on the host and a Python *client component* which runs in the
-container. Pull requests with clients for other languages are welcome!
+which runs on the host and a C programming statically linked or Python *client
+component* which runs in the container. Pull requests with clients for other
+languages are welcome!
 
 The main application is currently to allow Python code within a container to
 run SLURM commands on the host. The idea is that repository is customised by
 including it as a git submodule. Usually this customisation code will include
-some setup that arranges so that the req_run.py is monkeypatched in place of
-the subprocess module 
+some setup that arranges so that some client code is run whenever the patched
+program attempts. Currently there are two approaches to this. The current
+preferred approach is to bind dummy proxy programs into the container's `PATH`.
+A legacy approach is to run a Python client which is monkeypatched in via
+a fake subprocess module.
 
 The whole setup is made to make minimal requirements upon the host system.
 After all, why are we insisting upon containerisation, if we're just going to
@@ -61,12 +65,12 @@ to execute commands on the host, the workflow is like so:
 
 In `setup.sh` you need to arrange it so that whatever module is trying to run
 processes starts them using the `singreqrun` protocol. Currently this is best
-done by patching whichever Python module you are targeting to import
-fake_subprocess instead of subprocess. In case you want to target something
-other than a Python module, you will need to write another client for the
-protocol. `run_bootstrap.sh` is passed all arguments passed to `run.sh` as
-`$ARGS`. See [singslurm2](https://github.com/frankier/singslurm2) for
-a complete example. I hope you like bash scripting(!)
+done by binding in the static srr_client executable as every command you want
+to run on the host. In case you want to target something other than a Python
+module, you will need to write another client for the protocol.
+`run_bootstrap.sh` is passed all arguments passed to `run.sh` as `$ARGS`. See
+[singslurm2](https://github.com/frankier/singslurm2) for a complete example.
+I hope you like bash scripting(!)
 
 TODO: A bit more detail here.
 
