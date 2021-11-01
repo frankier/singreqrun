@@ -43,6 +43,12 @@ int file_to_file(char* in_path, int out_fd) {
 }
 
 int main(int argc, char *argv[]) {
+  // -1. Check if we're just warming up the executable
+  char* noop = getenv("SRR_CLIENT_NOOP");
+  if (noop != NULL) {
+    return 0;
+  }
+
   // 0. Read configuration variables
   char* prefix = getenv(PREFIX_ENV_VAR_NAME);
   if (prefix == NULL || prefix[0] == '\0') {
@@ -63,6 +69,10 @@ int main(int argc, char *argv[]) {
     return abort_write_error(xstrcat("could not create ", cmd_path));
   }
   write(cmd_fd, SCRIPT_SHEBAG, strlen(SCRIPT_SHEBAG));
+  char* cwd = getcwd(NULL, NULL);
+  write(cmd_fd, "cd ", 3);
+  write(cmd_fd, cwd, strlen(cwd));
+  write(cmd_fd, " && ", 4);
   for (int i = 0; i < argc; i++) {
     // Idea from Python shlex.quote(...):
     // > use single quotes, and put single quotes into double quotes

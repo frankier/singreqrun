@@ -1,0 +1,1 @@
+PATH=/hostbin:$PATH exec "$@"
