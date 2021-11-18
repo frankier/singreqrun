@@ -31,9 +31,22 @@ cd ..
 cp $SCRIPTPATH/executor.sh $SCRIPTPATH/patch_path_then.sh .
 chmod +x executor.sh patch_path_then.sh
 
+# Pre 3) Save args preserving quotes
+ARGS=''
+for i in "$@"; do
+    case "$i" in
+        *\'*)
+            i=`printf "%s" "$i" | sed "s/'/'\"'\"'/g"`
+            ;;
+        *) : ;;
+    esac
+    ARGS="$ARGS '$i'"
+done
+
 # Step 3) Copy in user bootstrap which is run inside container
 TMP_DIR="$tmp_dir" \
-ARGS="$@" \
+ARGS="$ARGS" \
+DOLLAR='$' \
 envsubst \
 < $SCRIPTPATH/run_bootstrap.sh \
 > run_bootstrap.sh
@@ -47,7 +60,12 @@ chmod +x run_bootstrap.sh
 popd
 
 mkdir -p $tmp_dir/req_run
-touch $tmp_dir/req_run/reqs
+
+if [[ -n "$FILE_RPC" ]]; then
+  touch $tmp_dir/req_run/reqs
+else
+  mkfifo $tmp_dir/req_run/reqs
+fi
 
 trap "exit" INT TERM
 trap "kill 0" EXIT
@@ -59,3 +77,7 @@ if [[ -n "$PRE_COORDINATOR_SCRIPT" ]]; then
 fi
 
 SING_EXTRA_ARGS="$SING_EXTRA_ARGS --bind $HOSTBIN:/hostbin"
+
+if [[ -n "$FILE_RPC" ]]; then
+  SING_EXTRA_ARGS="$SING_EXTRA_ARGS --env SINGREQRUN2_SYNC_RPC=1"
+fi
