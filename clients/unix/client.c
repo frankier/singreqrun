@@ -177,11 +177,11 @@ int main(int argc, char *argv[]) {
     if (retcode != 0) return retcode;
   } else {
     int sleep_time_idx = -1;
+    rm_append(STDOUT_FILENO);
+    rm_append(STDERR_FILENO);
     nonblock(STDIN_FILENO);
     nonblock(STDOUT_FILENO);
     nonblock(STDERR_FILENO);
-    rm_append(STDOUT_FILENO);
-    rm_append(STDERR_FILENO);
     int in_fd = open(stdin_path, O_WRONLY, O_NONBLOCK);
     if (in_fd == -1) {
       fprintf(stderr, "Error opening %s errno: %d\n", stdin_path, errno);
