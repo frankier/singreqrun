@@ -45,15 +45,29 @@ int file_to_file(char* in_path, int out_fd) {
   return 0;
 }
 
-int pipe_to_pipe(int in_fd, int out_fd, bool *activity, bool *live) {
+void rm_append(int fd) {
+  int flags = fcntl(fd, F_GETFL);
+  if (isatty(fd) && flags >= 0) {
+    fcntl(fd, F_SETFL, flags ^ O_APPEND);
+  }
+}
+
+int pipe_to_pipe(int in_fd, int out_fd, bool *activity, bool *live, bool *splice_works) {
   while (1) {
-    int ret = splice(in_fd, NULL, out_fd, NULL, MAX_IO_BYTES, SPLICE_F_NONBLOCK);
+    int ret;
+    if (splice_works) {
+      ret = splice(in_fd, NULL, out_fd, NULL, MAX_IO_BYTES, SPLICE_F_NONBLOCK);
+    } else {
+      ret = copyfd(in_fd, NULL, out_fd, NULL, MAX_IO_BYTES, SPLICE_F_NONBLOCK);
+    }
     if (ret == 0) {
       *live = false;
       return 0;
     } else if (ret == -1) {
       if (errno == EAGAIN) {
         return 0;
+      } else if (splice_works && errno == EINVAL) {
+        *splice_works = false;
       } else {
         fprintf(stderr, "Error splicing from %d to %d, errno: %d\n", in_fd, out_fd, errno);
         return -124;
@@ -166,6 +180,8 @@ int main(int argc, char *argv[]) {
     nonblock(STDIN_FILENO);
     nonblock(STDOUT_FILENO);
     nonblock(STDERR_FILENO);
+    rm_append(STDOUT_FILENO);
+    rm_append(STDERR_FILENO);
     int in_fd = open(stdin_path, O_WRONLY, O_NONBLOCK);
     if (in_fd == -1) {
       fprintf(stderr, "Error opening %s errno: %d\n", stdin_path, errno);
@@ -184,6 +200,9 @@ int main(int argc, char *argv[]) {
     bool in_live = true;
     bool out_live = true;
     bool err_live = true;
+    bool in_splice_works = true;
+    bool out_splice_works = true;
+    bool err_splice_works = true;
     int retcode;
 
     while (1) {
@@ -192,15 +211,15 @@ int main(int argc, char *argv[]) {
       }
       bool activity = false;
       if (in_live) {
-        retcode = pipe_to_pipe(STDIN_FILENO, in_fd, &activity, &in_live);
+        retcode = pipe_to_pipe(STDIN_FILENO, in_fd, &activity, &in_live, &in_splice_works);
         if (retcode != 0) return retcode;
       }
       if (out_live) {
-        retcode = pipe_to_pipe(out_fd, STDOUT_FILENO, &activity, &out_live);
+        retcode = pipe_to_pipe(out_fd, STDOUT_FILENO, &activity, &out_live, &out_splice_works);
         if (retcode != 0) return retcode;
       }
       if (err_live) {
-        retcode = pipe_to_pipe(err_fd, STDERR_FILENO, &activity, &err_live);
+        retcode = pipe_to_pipe(err_fd, STDERR_FILENO, &activity, &err_live, &err_splice_works);
         if (retcode != 0) return retcode;
       }
       if (!out_live && !err_live) {
