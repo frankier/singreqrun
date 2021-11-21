@@ -33,9 +33,9 @@ do
     wait_pipe $tmp_dir/req_run/$iden.stdout
     wait_pipe $tmp_dir/req_run/$iden.stderr
     $tmp_dir/req_run/$iden.cmd \
-      < $tmp_dir/req_run/$iden.stdin \
       > $tmp_dir/req_run/$iden.stdout \
-      2> $tmp_dir/req_run/$iden.stderr
+      2> $tmp_dir/req_run/$iden.stderr \
+      < $tmp_dir/req_run/$iden.stdin
     echo $? > $tmp_dir/req_run/$iden.code
   fi
 done
