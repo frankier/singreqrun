@@ -55,10 +55,10 @@ void rm_append(int fd) {
 int pipe_to_pipe(int in_fd, int out_fd, bool *activity, bool *live, bool *splice_works) {
   while (1) {
     int ret;
-    if (splice_works) {
+    if (*splice_works) {
       ret = splice(in_fd, NULL, out_fd, NULL, MAX_IO_BYTES, SPLICE_F_NONBLOCK);
     } else {
-      ret = copyfd(in_fd, NULL, out_fd, NULL, MAX_IO_BYTES, SPLICE_F_NONBLOCK);
+      ret = copyfd(in_fd, NULL, out_fd, NULL, MAX_IO_BYTES, 0);
     }
     if (ret == 0) {
       *live = false;
@@ -83,12 +83,32 @@ void nonblock(int fd) {
   fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
 
-int guard(int ret, char * err) {
+int guard(int ret, char *err) {
   if (ret == -1) {
     perror(err);
     exit(1);
   }
   return ret;
+}
+
+int write_req(char *reqs_path, char *iden) {
+  FILE* req_run_f = fopen(reqs_path, "a");
+  if (req_run_f < 0) {
+    return abort_write_error(xstrcat("could not open ", reqs_path));
+  }
+  fputs(iden, req_run_f);
+  fputc('\n', req_run_f);
+  fclose(req_run_f);
+  return 0;
+}
+
+int open_pipeout(char *path) {
+  int fd = open(path, O_RDONLY | O_NONBLOCK);
+  if (fd == -1) {
+    fprintf(stderr, "Error opening %s errno: %d\n", path, errno);
+    exit(-125);
+  }
+  return fd;
 }
 
 int main(int argc, char *argv[]) {
@@ -120,7 +140,7 @@ int main(int argc, char *argv[]) {
     return abort_write_error(xstrcat("could not create ", cmd_path));
   }
   write(cmd_fd, SCRIPT_SHEBAG, strlen(SCRIPT_SHEBAG));
-  char* cwd = getcwd(NULL, NULL);
+  char* cwd = getcwd(NULL, 0);
   write(cmd_fd, "cd ", 3);
   write(cmd_fd, cwd, strlen(cwd));
   write(cmd_fd, " && ", 4);
@@ -142,21 +162,10 @@ int main(int argc, char *argv[]) {
   char* stdout_path = xstrcat(prefix_iden, ".stdout");
   char* stderr_path = xstrcat(prefix_iden, ".stderr");
 
-  if (!sync_rpc) {
-    guard(mkfifo(stdin_path, 0777), "Could not make stdin pipe");
-    guard(mkfifo(stdout_path, 0777), "Could not make stdout pipe");
-    guard(mkfifo(stderr_path, 0777), "Could not make stderr pipe");
-  }
-
-  FILE* req_run_f = fopen(reqs_path, "a");
-  if (req_run_f < 0) {
-    return abort_write_error(xstrcat("could not open ", reqs_path));
-  }
-  fputs(iden, req_run_f);
-  fputc('\n', req_run_f);
-  fclose(req_run_f);
-
   if (sync_rpc) {
+    int retcode = write_req(reqs_path, iden);
+    if (retcode != 0) return retcode;
+
     // 4. Wait for exit code file to appear
     unsigned int sleep_time_idx = 0;
     while (1) {
@@ -171,40 +180,66 @@ int main(int argc, char *argv[]) {
     }
 
     // 5. Write output files to output streams
-    int retcode = file_to_file(stdout_path, 1);
+    retcode = file_to_file(stdout_path, 1);
     if (retcode != 0) return retcode;
     retcode = file_to_file(stderr_path, 2);
     if (retcode != 0) return retcode;
   } else {
-    int sleep_time_idx = -1;
+    guard(mkfifo(stdin_path, 0777), "Could not make stdin pipe");
+    guard(mkfifo(stdout_path, 0777), "Could not make stdout pipe");
+    guard(mkfifo(stderr_path, 0777), "Could not make stderr pipe");
+
     rm_append(STDOUT_FILENO);
     rm_append(STDERR_FILENO);
     nonblock(STDIN_FILENO);
     nonblock(STDOUT_FILENO);
     nonblock(STDERR_FILENO);
-    int in_fd = open(stdin_path, O_WRONLY, O_NONBLOCK);
-    if (in_fd == -1) {
-      fprintf(stderr, "Error opening %s errno: %d\n", stdin_path, errno);
-      return -125;
-    }
-    int out_fd = open(stdout_path, O_RDONLY, O_NONBLOCK);
-    if (out_fd == -1) {
-      fprintf(stderr, "Error opening %s errno: %d\n", stdout_path, errno);
-      return -125;
-    }
-    int err_fd = open(stderr_path, O_RDONLY, O_NONBLOCK);
-    if (err_fd == -1) {
-      fprintf(stderr, "Error opening %s errno: %d\n", stderr_path, errno);
-      return -125;
-    }
+
+    int out_fd = open_pipeout(stdout_path);
+    int err_fd = open_pipeout(stderr_path);
+
+    int retcode = write_req(reqs_path, iden);
+    if (retcode != 0) return retcode;
+
+    int sleep_time_idx = -1;
+
     bool in_live = true;
     bool out_live = true;
     bool err_live = true;
     bool in_splice_works = true;
     bool out_splice_works = true;
     bool err_splice_works = true;
-    int retcode;
 
+    int in_fd;
+
+    while (1) {
+      if (sleep_time_idx >= 0) {
+        usleep(SLEEP_TIMES[sleep_time_idx]);
+      }
+      in_fd = open(stdin_path, O_WRONLY | O_NONBLOCK);
+      if (in_fd == -1) {
+        if (errno == ENXIO) {
+          // No reader attached
+          int accessible = access(code_path, F_OK);
+          if (accessible == 0) {
+            // Process finished before anything could be written to stdin
+            in_live = false;
+            break;
+          }
+        } else {
+          fprintf(stderr, "Error opening %s errno: %d\n", stdin_path, errno);
+          return -125;
+        }
+      } else {
+        // Opened successfully
+        break;
+      }
+      if (sleep_time_idx < NUM_SLEEP_TIMES - 1) {
+        sleep_time_idx++;
+      }
+    }
+
+    sleep_time_idx = -1;
     while (1) {
       if (sleep_time_idx >= 0) {
         usleep(SLEEP_TIMES[sleep_time_idx]);
@@ -212,14 +247,23 @@ int main(int argc, char *argv[]) {
       bool activity = false;
       if (in_live) {
         retcode = pipe_to_pipe(STDIN_FILENO, in_fd, &activity, &in_live, &in_splice_works);
+        if (!in_live) {
+          close(in_fd);
+        }
         if (retcode != 0) return retcode;
       }
       if (out_live) {
         retcode = pipe_to_pipe(out_fd, STDOUT_FILENO, &activity, &out_live, &out_splice_works);
+        if (!out_live) {
+          close(out_fd);
+        }
         if (retcode != 0) return retcode;
       }
       if (err_live) {
         retcode = pipe_to_pipe(err_fd, STDERR_FILENO, &activity, &err_live, &err_splice_works);
+        if (!err_live) {
+          close(err_fd);
+        }
         if (retcode != 0) return retcode;
       }
       if (!out_live && !err_live) {
