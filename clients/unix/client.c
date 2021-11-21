@@ -52,22 +52,20 @@ void rm_append(int fd) {
   }
 }
 
-int pipe_to_pipe(int in_fd, int out_fd, bool *activity, bool *live, bool *splice_works) {
+int pipe_to_pipe(int in_fd, int out_fd, bool *activity, bool *live) {
   while (1) {
-    int ret;
-    if (*splice_works) {
-      ret = splice(in_fd, NULL, out_fd, NULL, MAX_IO_BYTES, SPLICE_F_NONBLOCK);
-    } else {
-      ret = copyfd(in_fd, NULL, out_fd, NULL, MAX_IO_BYTES, 0);
-    }
+    //int ret = splice(in_fd, NULL, out_fd, NULL, MAX_IO_BYTES, SPLICE_F_NONBLOCK);
+    int ret = copyfd(in_fd, NULL, out_fd, NULL, MAX_IO_BYTES, 0);
+    //fprintf(stderr, "copyfd %d -> %d; ret %d errno %d\n", in_fd, out_fd, ret, errno);
     if (ret == 0) {
       *live = false;
       return 0;
     } else if (ret == -1) {
       if (errno == EAGAIN) {
         return 0;
-      } else if (splice_works && errno == EINVAL) {
-        *splice_works = false;
+      } else if (errno == EPIPE) {
+        *live = false;
+        return 0;
       } else {
         fprintf(stderr, "Error splicing from %d to %d, errno: %d\n", in_fd, out_fd, errno);
         return -124;
@@ -174,7 +172,7 @@ int main(int argc, char *argv[]) {
       if (accessible == 0) {
         break;
       }
-      if (sleep_time_idx < NUM_SLEEP_TIMES - 1) {
+      if (sleep_time_idx < (signed)(NUM_SLEEP_TIMES - 1)) {
         sleep_time_idx++;
       }
     }
@@ -185,6 +183,7 @@ int main(int argc, char *argv[]) {
     retcode = file_to_file(stderr_path, 2);
     if (retcode != 0) return retcode;
   } else {
+    signal(SIGPIPE, SIG_IGN);
     guard(mkfifo(stdin_path, 0777), "Could not make stdin pipe");
     guard(mkfifo(stdout_path, 0777), "Could not make stdout pipe");
     guard(mkfifo(stderr_path, 0777), "Could not make stderr pipe");
@@ -206,9 +205,6 @@ int main(int argc, char *argv[]) {
     bool in_live = true;
     bool out_live = true;
     bool err_live = true;
-    bool in_splice_works = true;
-    bool out_splice_works = true;
-    bool err_splice_works = true;
 
     int in_fd;
 
@@ -234,7 +230,7 @@ int main(int argc, char *argv[]) {
         // Opened successfully
         break;
       }
-      if (sleep_time_idx < NUM_SLEEP_TIMES - 1) {
+      if (sleep_time_idx < (signed)(NUM_SLEEP_TIMES - 1)) {
         sleep_time_idx++;
       }
     }
@@ -246,21 +242,21 @@ int main(int argc, char *argv[]) {
       }
       bool activity = false;
       if (in_live) {
-        retcode = pipe_to_pipe(STDIN_FILENO, in_fd, &activity, &in_live, &in_splice_works);
+        retcode = pipe_to_pipe(STDIN_FILENO, in_fd, &activity, &in_live);
         if (!in_live) {
           close(in_fd);
         }
         if (retcode != 0) return retcode;
       }
       if (out_live) {
-        retcode = pipe_to_pipe(out_fd, STDOUT_FILENO, &activity, &out_live, &out_splice_works);
+        retcode = pipe_to_pipe(out_fd, STDOUT_FILENO, &activity, &out_live);
         if (!out_live) {
           close(out_fd);
         }
         if (retcode != 0) return retcode;
       }
       if (err_live) {
-        retcode = pipe_to_pipe(err_fd, STDERR_FILENO, &activity, &err_live, &err_splice_works);
+        retcode = pipe_to_pipe(err_fd, STDERR_FILENO, &activity, &err_live);
         if (!err_live) {
           close(err_fd);
         }
@@ -277,7 +273,7 @@ int main(int argc, char *argv[]) {
       }
       if (activity) {
         sleep_time_idx = -1;
-      } else if (sleep_time_idx < NUM_SLEEP_TIMES - 1) {
+      } else if (sleep_time_idx < (signed)(NUM_SLEEP_TIMES - 1)) {
         sleep_time_idx++;
       }
     }
